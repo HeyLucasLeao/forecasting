@@ -159,6 +159,47 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
     return fig.show(fig_type)
 
 
+def plot_stl_decomposition(df_stl, fig_type="png"):
+    """Plots the STL decomposition of a time series using Plotly."""
+    fig = sp.make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=("Data", "Residual"),
+        vertical_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Scatter(x=df_stl["ds"], y=df_stl["y"], mode="lines", name="Original"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df_stl["ds"], y=df_stl["trend"], mode="lines", name="Trend"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df_stl["ds"], y=df_stl["seasonal"], mode="lines", name="Seasonal"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df_stl["ds"], y=df_stl["resid"], mode="lines", name="Residual"),
+        row=2,
+        col=1,
+    )
+    fig.update_layout(
+        title="STL Decomposition of Time Series",
+        xaxis_title="Date",
+        yaxis_title="Value",
+        legend_title="Component",
+        template="plotly_white",
+        height=800,
+    )
+    fig.update_xaxes(title_text="Date", row=2, col=1)
+    return fig.show(fig_type)
+
+
 def add_in_date_information(df, time_col):
     """
     Adds date-based features to the dataframe
