@@ -62,10 +62,11 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
     plotly.graph_objects.Figure
         Interactive plot showing time series, ACF, PACF, and ADF results
     """
+    N = len(variables)
 
     def create_acf_pacf_traces(data, nlags=30, color=None):
-        n = len(data)
-        conf = 1.96 / np.sqrt(n)
+        N = len(data)
+        conf = 1.96 / np.sqrt(N)
         acf_vals = acf(data, nlags=nlags)
         pacf_vals = pacf(data, nlags=nlags, method="yw")
 
@@ -96,9 +97,7 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
         subplot_titles.extend([f"Series ({var})", f"ACF ({var})", f"PACF ({var})"])
     subplot_titles.extend(["ADF Results Summary", "", ""])
 
-    fig = sp.make_subplots(
-        rows=len(variables) + 1, cols=3, subplot_titles=subplot_titles
-    )
+    fig = sp.make_subplots(rows=N + 1, cols=3, subplot_titles=subplot_titles)
 
     adf_results = {}
 
@@ -134,7 +133,7 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
 
     fig.add_trace(
         go.Scatter(x=[0], y=[0], text=[adf_text], mode="text", showlegend=False),
-        row=len(variables) + 1,
+        row=N + 1,
         col=1,
     )
 
@@ -145,7 +144,7 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
         showlegend=False,
     )
 
-    for row in range(1, 3):
+    for row in range(1, N + 1):
         fig.update_xaxes(title_text="Date", row=row, col=1)
         fig.update_yaxes(title_text="Value", row=row, col=1)
         fig.update_xaxes(title_text="Lag", row=row, col=2)
@@ -156,47 +155,6 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
     fig.update_xaxes(visible=False, row=4, col=1)
     fig.update_yaxes(visible=False, row=4, col=1)
 
-    return fig.show(fig_type)
-
-
-def plot_stl_decomposition(df_stl, fig_type="png"):
-    """Plots the STL decomposition of a time series using Plotly."""
-    fig = sp.make_subplots(
-        rows=2,
-        cols=1,
-        shared_xaxes=True,
-        subplot_titles=("Data", "Residual"),
-        vertical_spacing=0.12,
-    )
-    fig.add_trace(
-        go.Scatter(x=df_stl["ds"], y=df_stl["y"], mode="lines", name="Original"),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(x=df_stl["ds"], y=df_stl["trend"], mode="lines", name="Trend"),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(x=df_stl["ds"], y=df_stl["seasonal"], mode="lines", name="Seasonal"),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(x=df_stl["ds"], y=df_stl["resid"], mode="lines", name="Residual"),
-        row=2,
-        col=1,
-    )
-    fig.update_layout(
-        title="STL Decomposition of Time Series",
-        xaxis_title="Date",
-        yaxis_title="Value",
-        legend_title="Component",
-        template="plotly_white",
-        height=800,
-    )
-    fig.update_xaxes(title_text="Date", row=2, col=1)
     return fig.show(fig_type)
 
 
