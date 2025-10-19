@@ -45,6 +45,23 @@ def forecastability(X):
 
 
 def plot_acf_pacf_adf(df, variables, fig_type=None):
+    """
+    Create ACF/PACF plots with ADF test results for multiple variables.
+
+    Parameters:
+    ----------
+    df : pandas.DataFrame
+        Input dataframe containing the time series data
+    variables : list
+        List of column names to analyze
+    fig_type : str, optional
+        Figure display type for plotly (e.g., 'browser', 'png', etc.)
+
+    Returns:
+    -------
+    plotly.graph_objects.Figure
+        Interactive plot showing time series, ACF, PACF, and ADF results
+    """
 
     def create_acf_pacf_traces(data, nlags=30, color=None):
         n = len(data)
@@ -74,7 +91,6 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
 
         return acf_bar, pacf_bar, band_upper, band_lower
 
-    # Criar títulos dos subplots corretamente
     subplot_titles = []
     for var in variables:
         subplot_titles.extend([f"Series ({var})", f"ACF ({var})", f"PACF ({var})"])
@@ -84,14 +100,12 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
         rows=len(variables) + 1, cols=3, subplot_titles=subplot_titles
     )
 
-    # Calcular ADF results primeiro
     adf_results = {}
 
     for i, var in enumerate(variables, start=1):
         X = df[var].dropna()
         adf_stat, p_value = adfuller(X)[:2]
         adf_results[var] = f"ADF={adf_stat:.4f}, p={p_value:.4f}"
-        # Série temporal
         fig.add_trace(
             go.Scatter(
                 x=X.index,
@@ -105,7 +119,6 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
             col=1,
         )
 
-        # ACF e PACF
         acf_values, pacf_values, conf_up, conf_lo = create_acf_pacf_traces(
             X, color="orange"
         )
@@ -119,22 +132,19 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
 
     adf_text = "<br>".join([f"<b>{k}</b>: {v}" for k, v in adf_results.items()])
 
-    # Row 4 - ADF summary as annotation
     fig.add_trace(
         go.Scatter(x=[0], y=[0], text=[adf_text], mode="text", showlegend=False),
         row=len(variables) + 1,
         col=1,
     )
 
-    # Layout
     fig.update_layout(
-        title="ACF/PACF Across Differencing Stages with ADF Summary",
+        title="ACF/PACF with ADF Summary",
         height=1200,
         width=1300,
         showlegend=False,
     )
 
-    # Axis labels
     for row in range(1, 3):
         fig.update_xaxes(title_text="Date", row=row, col=1)
         fig.update_yaxes(title_text="Value", row=row, col=1)
@@ -166,3 +176,12 @@ def add_in_date_information(df, time_col):
     df["yr_sin"] = np.sin(2 * np.pi * df[time_col].dt.dayofyear / 12)
     df["yr_cos"] = np.cos(2 * np.pi * df[time_col].dt.dayofyear / 12)
     return df
+
+
+def generate_lag(X, lag=1):
+    X = np.asarray(X, dtype=np.float64)
+
+    if X.ndim > 1:
+        raise ValueError("Input array must be one-dimensional.")
+
+    return np.concatenate((np.nan * np.ones(lag), (X[lag:] - X[:-lag])))
