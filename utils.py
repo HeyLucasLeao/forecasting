@@ -172,8 +172,8 @@ def add_in_date_information(df, time_col):
     df["dow_sin"] = np.sin(2 * np.pi * df[time_col].dt.dayofweek / 7)
     df["dow_cos"] = np.cos(2 * np.pi * df[time_col].dt.dayofweek / 7)
 
-    df["yr_sin"] = np.sin(2 * np.pi * df[time_col].dt.dayofyear / 12)
-    df["yr_cos"] = np.cos(2 * np.pi * df[time_col].dt.dayofyear / 12)
+    df["yr_sin"] = np.sin(2 * np.pi * df[time_col].dt.dayofyear / 365)
+    df["yr_cos"] = np.cos(2 * np.pi * df[time_col].dt.dayofyear / 365)
     return df
 
 
