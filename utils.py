@@ -204,7 +204,6 @@ def forecastability(X):
 
 def stationarity_check(
     df,
-    variables,
     height=1200,
     width=1300,
     fig_type=None,
@@ -250,7 +249,7 @@ def stationarity_check(
     for each variable, used to check for stationarity.
     """
 
-    N = len(variables)
+    N = len(df.columns)
     colors = px.colors.qualitative.T10
     num_colors = len(colors)
 
@@ -287,7 +286,7 @@ def stationarity_check(
         return acf_bar, pacf_bar, band_upper, band_lower
 
     subplot_titles = []
-    for var in variables:
+    for var in df.columns:
         subplot_titles.extend([f"Series ({var})", f"ACF ({var})", f"PACF ({var})"])
     subplot_titles.extend(["ADF Results Summary", "", ""])
 
@@ -295,7 +294,7 @@ def stationarity_check(
 
     adf_results = {}
 
-    for i, var in enumerate(variables, start=1):
+    for i, var in enumerate(df.columns, start=1):
         X = df[var].dropna()
         adf_stat, p_value = adfuller(X)[:2]
         adf_results[var] = f"ADF={adf_stat:.4f}, p={p_value:.4f}"
