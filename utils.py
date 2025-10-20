@@ -11,6 +11,7 @@ import plotly.subplots as sp
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 
 def remove_leading_zeros(group):
@@ -158,6 +159,50 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
 
     fig.update_xaxes(visible=False, row=N + 1, col=1)
     fig.update_yaxes(visible=False, row=N + 1, col=1)
+
+    return fig.show(fig_type)
+
+
+def plot_seasonal_decompose(
+    x,
+    model="additive",
+    filt=None,
+    period=None,
+    two_sided=True,
+    extrapolate_trend=0,
+    fig_type=None,
+):
+
+    result = seasonal_decompose(
+        x,
+        model=model,
+        filt=filt,
+        period=period,
+        two_sided=two_sided,
+        extrapolate_trend=extrapolate_trend,
+    )
+    fig = sp.make_subplots(
+        rows=4, cols=1, subplot_titles=["Observed", "Trend", "Seasonal", "Residuals"]
+    )
+    for idx, col in enumerate(["observed", "trend", "seasonal", "resid"]):
+        fig.add_trace(
+            go.Scatter(
+                x=result.observed.index,
+                y=getattr(result, col),
+                mode="lines",
+                hovertemplate=f"{col.capitalize()}: " + "%{y}<extra></extra>",
+            ),
+            row=idx + 1,
+            col=1,
+        )
+
+    fig.update_layout(
+        title="Seasonal Decomposition",
+        height=1200,
+        width=1300,
+        showlegend=False,
+        hovermode="x",
+    )
 
     return fig.show(fig_type)
 
