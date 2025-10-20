@@ -10,6 +10,7 @@ import plotly.graph_objs as go
 import plotly.subplots as sp
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
 
 def remove_leading_zeros(group):
@@ -62,6 +63,8 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
         Interactive plot showing time series, ACF, PACF, and ADF results
     """
     N = len(variables)
+    colors = px.colors.qualitative.T10
+    num_colors = len(colors)
 
     def create_acf_pacf_traces(data, nlags=30, color=None):
         N = len(data)
@@ -104,6 +107,8 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
         X = df[var].dropna()
         adf_stat, p_value = adfuller(X)[:2]
         adf_results[var] = f"ADF={adf_stat:.4f}, p={p_value:.4f}"
+        color = colors[(i - 1) % num_colors]
+
         fig.add_trace(
             go.Scatter(
                 x=X.index,
@@ -111,14 +116,14 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
                 mode="lines",
                 name=var,
                 showlegend=False,
-                line=dict(color="orange"),
+                line=dict(color=color),
             ),
             row=i,
             col=1,
         )
 
         acf_values, pacf_values, conf_up, conf_lo = create_acf_pacf_traces(
-            X, color="orange"
+            X, color=color
         )
 
         fig.add_trace(acf_values, row=i, col=2)
@@ -151,8 +156,8 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
         fig.update_yaxes(title_text="ACF", row=row, col=2)
         fig.update_yaxes(title_text="PACF", row=row, col=3)
 
-    fig.update_xaxes(visible=False, row=4, col=1)
-    fig.update_yaxes(visible=False, row=4, col=1)
+    fig.update_xaxes(visible=False, row=N + 1, col=1)
+    fig.update_yaxes(visible=False, row=N + 1, col=1)
 
     return fig.show(fig_type)
 
