@@ -203,10 +203,11 @@ def forecastability(X):
 
 
 def stationarity_check(
-    df,
-    height=1200,
-    width=1300,
-    fig_type=None,
+    df: Union[pd.DataFrame, pd.Series],
+    height: int = 1200,
+    width: int = 1300,
+    nlags: int = 30,
+    fig_type: Optional[str] = None,
 ):
     """
     Creates interactive ACF and PACF plots with ADF test results for multiple series.
@@ -219,15 +220,16 @@ def stationarity_check(
 
     Parameters
     ----------
-    df : pandas.DataFrame
-        Input DataFrame containing the time series data. The index is used
-        as the time axis.
-    variables : list of str
-        List of column names (variables) from the DataFrame to be analyzed.
+    df : pandas.DataFrame, pandas.Series, or list
+        Input data containing the time series. Can be:
+        - DataFrame: Multiple columns will be analyzed
+        - Series: Will be converted to single-column DataFrame
     height : int, default=1200
         Figure height in pixels.
     width : int, default=1300
         Figure width in pixels.
+    nlags : int, default=30
+        Number of lags to include in ACF and PACF calculations.
     fig_type : str, optional
         Plotly figure output type. Passed to `fig.show()`.
         E.g.: 'json', 'html', 'notebook'.
@@ -247,7 +249,18 @@ def stationarity_check(
     3. The Partial Autocorrelation Function (PACF).
     The last row contains a summary of the ADF test results (statistic and p-value)
     for each variable, used to check for stationarity.
+
+    Confidence bands are shown on ACF and PACF plots at ±1.96/√N level.
     """
+
+    if isinstance(df, pd.Series):
+        series_name = df.name if df.name is not None else "Value"
+        df = df.to_frame(name=series_name)
+
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(
+            "Input must be a pandas Series, pandas DataFrame, or a list (of lists)."
+        )
 
     N = len(df.columns)
     colors = px.colors.qualitative.T10
@@ -314,7 +327,9 @@ def stationarity_check(
         )
 
         acf_values, pacf_values, conf_up, conf_lo = create_acf_pacf_traces(
-            X, color=color
+            X,
+            color=color,
+            nlags=nlags,
         )
 
         fig.add_trace(acf_values, row=i, col=2)
