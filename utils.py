@@ -6,7 +6,6 @@ from tinyshift.series import (
     hurst_exponent,
 )
 from statsmodels.tsa.stattools import adfuller, acf, pacf
-import holidays
 import plotly.graph_objs as go
 import plotly.subplots as sp
 import pandas as pd
@@ -158,22 +157,77 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
     return fig.show(fig_type)
 
 
-def add_in_date_information(df, time_col):
+def add_fourier_seasonality(df, time_col, seasonality):
     """
-    Adds date-based features to the dataframe
+    Adds Fourier-based seasonal features to the dataframe.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        Input dataframe with time column
+    time_col : str
+        Name of the datetime column
+    seasonalities : list, optional
+        List of seasonalities to include. Options:
+        ['daily', 'weekly', 'monthly', 'quarterly', 'yearly']
+        Default: ['weekly', 'yearly']
+
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame with added Fourier seasonal features
+
+    Examples:
+    ---------
+    # Basic usage with default seasonalities
+    df = add_fourier_seasonality(df, 'ds')
+
+    # Custom seasonalities
+    df = add_fourier_seasonality(df, 'ds', seasonalities=['weekly', 'monthly', 'yearly'])
+
+    # All seasonalities
+    df = add_fourier_seasonality(df, 'ds', seasonalities=['daily', 'weekly', 'monthly', 'quarterly', 'yearly'])
     """
     df = df.copy()
-    holidays_br = holidays.country_holidays("Brazil")
-    df["month"] = df[time_col].dt.month
-    df["is_holiday"] = np.array([timestamp in holidays_br for timestamp in df["ds"]])
-    df["is_month_end"] = df[time_col].dt.is_month_end
 
-    # Cyclical encoding for day of week (weekly sensasonality) and day of year (yearly seasonality)
-    df["dow_sin"] = np.sin(2 * np.pi * df[time_col].dt.dayofweek / 7)
-    df["dow_cos"] = np.cos(2 * np.pi * df[time_col].dt.dayofweek / 7)
+    # Seasonality configurations
+    seasonality_config = {
+        "daily": {"period": 24, "value_func": lambda dt: dt.hour, "name": "daily"},
+        "weekly": {
+            "period": 7,
+            "value_func": lambda dt: dt.dayofweek,
+            "name": "weekly",
+        },
+        "monthly": {"period": 12, "value_func": lambda dt: dt.month, "name": "monthly"},
+        "quarterly": {
+            "period": 4,
+            "value_func": lambda dt: dt.quarter,
+            "name": "quarterly",
+        },
+        "yearly": {
+            "period": 365,
+            "value_func": lambda dt: dt.dayofyear,
+            "name": "yearly",
+        },
+    }
 
-    df["yr_sin"] = np.sin(2 * np.pi * df[time_col].dt.dayofyear / 365)
-    df["yr_cos"] = np.cos(2 * np.pi * df[time_col].dt.dayofyear / 365)
+    # Generate Fourier features for each requested seasonality
+    for season in seasonality:
+        if season not in seasonality_config:
+            raise ValueError(
+                f"Unknown seasonality: {season}. "
+                f"Available options: {list(seasonality_config.keys())}"
+            )
+
+        config = seasonality_config[season]
+        period = config["period"]
+        values = config["value_func"](df[time_col].dt)
+        name = config["name"]
+
+        # Generate sin and cos components
+        df[f"{name}_sin"] = np.sin(2 * np.pi * values / period)
+        df[f"{name}_cos"] = np.cos(2 * np.pi * values / period)
+
     return df
 
 
