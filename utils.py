@@ -45,7 +45,13 @@ def forecastability(X):
     }
 
 
-def plot_acf_pacf_adf(df, variables, fig_type=None):
+def plot_acf_pacf_adf(
+    df,
+    variables,
+    height=1200,
+    width=1300,
+    fig_type=None,
+):
     """
     Create ACF/PACF plots with ADF test results for multiple variables.
 
@@ -144,8 +150,8 @@ def plot_acf_pacf_adf(df, variables, fig_type=None):
 
     fig.update_layout(
         title="ACF/PACF with ADF Summary",
-        height=1200,
-        width=1300,
+        height=height,
+        width=width,
         showlegend=False,
     )
 
@@ -170,8 +176,12 @@ def plot_seasonal_decompose(
     period=None,
     two_sided=True,
     extrapolate_trend=0,
+    height=1200,
+    width=1300,
     fig_type=None,
 ):
+    colors = px.colors.qualitative.T10
+    num_colors = len(colors)
 
     result = seasonal_decompose(
         x,
@@ -184,22 +194,24 @@ def plot_seasonal_decompose(
     fig = sp.make_subplots(
         rows=4, cols=1, subplot_titles=["Observed", "Trend", "Seasonal", "Residuals"]
     )
-    for idx, col in enumerate(["observed", "trend", "seasonal", "resid"]):
+    for i, col in enumerate(["observed", "trend", "seasonal", "resid"]):
+        color = colors[(i - 1) % num_colors]
         fig.add_trace(
             go.Scatter(
                 x=result.observed.index,
                 y=getattr(result, col),
                 mode="lines",
                 hovertemplate=f"{col.capitalize()}: " + "%{y}<extra></extra>",
+                line=dict(color=color),
             ),
-            row=idx + 1,
+            row=i + 1,
             col=1,
         )
 
     fig.update_layout(
         title="Seasonal Decomposition",
-        height=1200,
-        width=1300,
+        height=height,
+        width=width,
         showlegend=False,
         hovermode="x",
     )
