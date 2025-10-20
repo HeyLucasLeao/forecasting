@@ -11,7 +11,164 @@ import plotly.subplots as sp
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa import seasonal
+from tinyshift.series import trend_significance
+from statsmodels.stats.diagnostic import acorr_ljungbox
+
+import plotly.subplots as sp
+import plotly.express as px
+import plotly.graph_objs as go
+import numpy as np
+from typing import Union, List, Optional
+
+
+def seasonal_decompose(
+    X: Union[np.ndarray, List[float], pd.Series],
+    model: str = "additive",
+    filt: Optional[np.ndarray] = None,
+    period: int = None,
+    two_sided: bool = True,
+    extrapolate_trend: int = 0,
+    height: int = 1200,
+    width: int = 1300,
+    ljung_lags: int = 10,
+    fig_type: Optional[str] = None,
+):
+    """
+    Performs seasonal decomposition of a time series and plots the components.
+
+    This function uses the `seasonal_decompose` method from statsmodels to separate the
+    time series into observed, trend, seasonal, and residual components.
+    Additionally, it calculates trend significance and the Ljung-Box test for
+    residuals, displaying a summary in the plot.
+
+    Parameters
+    ----------
+    X : array-like
+        The time series to be decomposed. Expected to be an object with an index
+        (e.g., pandas Series).
+    model : {"additive", "multiplicative"}, default="additive"
+        Type of seasonal model. If "additive", $X = T + S + R$. If
+        "multiplicative", $X = T \cdot S \cdot R$.
+    filt : array-like, optional
+        Moving average filter for calculating the trend component. By default,
+        a symmetric filter is used.
+    period : int, optional
+        Period of the series (number of observations per cycle). If `None` and `X` is
+        a pandas Series, the period is inferred from the index frequency.
+    two_sided : bool, default=True
+        If `True` (default), uses a centered moving average filter. If `False`, uses
+        a causal filter (future only).
+    extrapolate_trend : int or str, default=0
+        Number of points at the beginning and end to extrapolate the trend. If 0 (default),
+        the trend is `NaN` at these extremes.
+    height : int, default=1200
+        Figure height in pixels.
+    width : int, default=1300
+        Figure width in pixels.
+    ljung_lags : int, default=10
+        The number of lags to be used in the Ljung-Box test for residuals.
+    fig_type : str, optional
+        Plotly figure output type. Passed to `fig.show()`.
+        E.g.: 'json', 'html', 'notebook'.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure or None
+        Returns the Plotly Figure object if `fig_type` is `None` or the result
+        of the `fig.show(fig_type)` call.
+
+    Notes
+    -----
+    The resulting plot is a Plotly `make_subplots` with 5 subplots:
+    - Observed
+    - Trend
+    - Seasonal
+    - Residuals
+    - Summary (includes trend significance - $R^2$ and p-value - and the
+      Ljung-Box test for residual autocorrelation).
+    """
+
+    index = X.index if hasattr(X, "index") else list(range(len(X)))
+
+    if X.ndim != 1:
+        raise ValueError("Input data must be 1-dimensional")
+
+    colors = px.colors.qualitative.T10
+    num_colors = len(colors)
+
+    result = seasonal.seasonal_decompose(
+        X,
+        model=model,
+        filt=filt,
+        period=period,
+        two_sided=two_sided,
+        extrapolate_trend=extrapolate_trend,
+    )
+    fig = sp.make_subplots(
+        rows=5,
+        cols=1,
+        subplot_titles=[
+            "Observed",
+            "Trend",
+            "Seasonal",
+            "Residuals",
+            "Summary",
+        ],
+        row_heights=[4, 4, 4, 4, 1],
+    )
+
+    r_squared, p_value = trend_significance(X)
+    trend_results = f"R²={r_squared:.4f}, p={p_value:.4f}"
+    resid = result.resid[~np.isnan(result.resid)]
+    ljung_box = acorr_ljungbox(resid, lags=[ljung_lags])
+    ljung_stat, p_value = (
+        ljung_box["lb_stat"].values[0],
+        ljung_box["lb_pvalue"].values[0],
+    )
+    ljung_box = f"Stats={ljung_stat:.4f}, p={p_value:.4f}"
+    summary = "<br>".join(
+        [
+            f"<b>{k}</b>: {v}"
+            for k, v in {
+                "Trend Significance": trend_results,
+                "Ljung-Box Test": ljung_box,
+            }.items()
+        ]
+    )
+
+    for i, col in enumerate(["observed", "trend", "seasonal", "resid"]):
+        color = colors[(i - 1) % num_colors]
+        fig.add_trace(
+            go.Scatter(
+                x=index,
+                y=getattr(result, col),
+                mode="lines",
+                hovertemplate=f"{col.capitalize()}: " + "%{y}<extra></extra>",
+                line=dict(color=color),
+            ),
+            row=i + 1,
+            col=1,
+        )
+
+    fig.add_trace(
+        go.Scatter(x=[0], y=[0], text=[summary], mode="text", showlegend=False),
+        row=5,
+        col=1,
+    )
+
+    fig.update_xaxes(visible=False, row=5, col=1)
+    fig.update_yaxes(visible=False, row=5, col=1)
+
+    fig.update_layout(
+        title="Seasonal Decomposition",
+        height=height,
+        width=width,
+        showlegend=False,
+        hovermode="x",
+    )
+
+    return fig.show(fig_type)
 
 
 def remove_leading_zeros(group):
@@ -45,7 +202,7 @@ def forecastability(X):
     }
 
 
-def plot_acf_pacf_adf(
+def stationarity_check(
     df,
     variables,
     height=1200,
@@ -53,31 +210,59 @@ def plot_acf_pacf_adf(
     fig_type=None,
 ):
     """
-    Create ACF/PACF plots with ADF test results for multiple variables.
+    Creates interactive ACF and PACF plots with ADF test results for multiple series.
 
-    Parameters:
+    This function generates a comprehensive diagnostic visualization to assess the
+    stationarity and autocorrelation structure of multiple time series in a single panel.
+    The plot includes the series itself, its autocorrelation function (ACF) and partial
+    autocorrelation function (PACF), and a summary of the Augmented Dickey-Fuller (ADF)
+    test results.
+
+    Parameters
     ----------
     df : pandas.DataFrame
-        Input dataframe containing the time series data
-    variables : list
-        List of column names to analyze
+        Input DataFrame containing the time series data. The index is used
+        as the time axis.
+    variables : list of str
+        List of column names (variables) from the DataFrame to be analyzed.
+    height : int, default=1200
+        Figure height in pixels.
+    width : int, default=1300
+        Figure width in pixels.
     fig_type : str, optional
-        Figure display type for plotly (e.g., 'browser', 'png', etc.)
+        Plotly figure output type. Passed to `fig.show()`.
+        E.g.: 'json', 'html', 'notebook'.
 
-    Returns:
+    Returns
     -------
-    plotly.graph_objects.Figure
-        Interactive plot showing time series, ACF, PACF, and ADF results
+    plotly.graph_objects.Figure or None
+        Returns the Plotly Figure object if `fig_type` is `None` or the result
+        of the `fig.show(fig_type)` call.
+
+    Notes
+    -----
+    The function generates a subplot structure where each row corresponds to a
+    variable and displays:
+    1. The Time Series.
+    2. The Autocorrelation Function (ACF).
+    3. The Partial Autocorrelation Function (PACF).
+    The last row contains a summary of the ADF test results (statistic and p-value)
+    for each variable, used to check for stationarity.
     """
+
     N = len(variables)
     colors = px.colors.qualitative.T10
     num_colors = len(colors)
 
-    def create_acf_pacf_traces(data, nlags=30, color=None):
-        N = len(data)
+    def create_acf_pacf_traces(X, nlags=30, color=None):
+        """
+        Helper function to create ACF and PACF traces with confidence intervals.
+        """
+
+        N = len(X)
         conf = 1.96 / np.sqrt(N)
-        acf_vals = acf(data, nlags=nlags)
-        pacf_vals = pacf(data, nlags=nlags, method="yw")
+        acf_vals = acf(X, nlags=nlags)
+        pacf_vals = pacf(X, nlags=nlags, method="yw")
 
         acf_bar = go.Bar(x=list(range(len(acf_vals))), y=acf_vals, marker_color=color)
         pacf_bar = go.Bar(
@@ -169,56 +354,6 @@ def plot_acf_pacf_adf(
     return fig.show(fig_type)
 
 
-def plot_seasonal_decompose(
-    x,
-    model="additive",
-    filt=None,
-    period=None,
-    two_sided=True,
-    extrapolate_trend=0,
-    height=1200,
-    width=1300,
-    fig_type=None,
-):
-    colors = px.colors.qualitative.T10
-    num_colors = len(colors)
-
-    result = seasonal_decompose(
-        x,
-        model=model,
-        filt=filt,
-        period=period,
-        two_sided=two_sided,
-        extrapolate_trend=extrapolate_trend,
-    )
-    fig = sp.make_subplots(
-        rows=4, cols=1, subplot_titles=["Observed", "Trend", "Seasonal", "Residuals"]
-    )
-    for i, col in enumerate(["observed", "trend", "seasonal", "resid"]):
-        color = colors[(i - 1) % num_colors]
-        fig.add_trace(
-            go.Scatter(
-                x=result.observed.index,
-                y=getattr(result, col),
-                mode="lines",
-                hovertemplate=f"{col.capitalize()}: " + "%{y}<extra></extra>",
-                line=dict(color=color),
-            ),
-            row=i + 1,
-            col=1,
-        )
-
-    fig.update_layout(
-        title="Seasonal Decomposition",
-        height=height,
-        width=width,
-        showlegend=False,
-        hovermode="x",
-    )
-
-    return fig.show(fig_type)
-
-
 def add_fourier_seasonality(df, time_col, seasonality):
     """
     Adds Fourier-based seasonal features to the dataframe.
@@ -252,7 +387,6 @@ def add_fourier_seasonality(df, time_col, seasonality):
     """
     df = df.copy()
 
-    # Seasonality configurations
     seasonality_config = {
         "daily": {"period": 24, "value_func": lambda dt: dt.hour, "name": "daily"},
         "weekly": {
@@ -273,7 +407,6 @@ def add_fourier_seasonality(df, time_col, seasonality):
         },
     }
 
-    # Generate Fourier features for each requested seasonality
     for season in seasonality:
         if season not in seasonality_config:
             raise ValueError(
@@ -286,7 +419,6 @@ def add_fourier_seasonality(df, time_col, seasonality):
         values = config["value_func"](df[time_col].dt)
         name = config["name"]
 
-        # Generate sin and cos components
         df[f"{name}_sin"] = np.sin(2 * np.pi * values / period)
         df[f"{name}_cos"] = np.cos(2 * np.pi * values / period)
 
