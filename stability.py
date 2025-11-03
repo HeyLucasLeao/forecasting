@@ -78,123 +78,6 @@ def mach(
     return mac_h
 
 
-def vertical_scaling_factor_abs(
-    y_train: np.ndarray, seasonality: int
-) -> tuple[float, int]:
-    """
-    Calculate the vertical scaling factor using absolute differences.
-
-    Computes the sum of absolute differences between seasonal lags in the training data.
-    Formula: Sum_{i=m+1}^{t-1} |y_i - y_{i-m}| where m is seasonality.
-
-    Args:
-        y_train (np.ndarray): Historical training data.
-        seasonality (int): Seasonal period for lagged comparison.
-
-    Returns:
-        tuple[float, int]: A tuple containing:
-            - scaling_sum (float): Sum of absolute seasonal differences
-            - n_terms_in_sum (int): Number of terms used in the sum
-    """
-
-    t_prime = len(y_train) - 1
-    if t_prime <= seasonality:
-        return 0.0, 0
-
-    y_current = y_train[seasonality:t_prime]
-    y_lagged = y_train[: t_prime - seasonality]
-    scaling_sum = np.sum(np.abs(y_current - y_lagged))
-    n_terms_in_sum = len(y_current)
-    return scaling_sum, n_terms_in_sum
-
-
-def horizontal_scaling_factor_abs(
-    y_train: np.ndarray, seasonality: int
-) -> tuple[float, int]:
-    """
-    Calculate the horizontal scaling factor using absolute differences.
-
-    Computes the sum of absolute differences between seasonal lags in the training data.
-    Formula: Sum_{i=m+1}^{t} |y_i - y_{i-m}| where m is seasonality.
-
-    Args:
-        y_train (np.ndarray): Historical training data.
-        seasonality (int): Seasonal period for lagged comparison.
-
-    Returns:
-        tuple[float, int]: A tuple containing:
-            - scaling_sum (float): Sum of absolute seasonal differences
-            - n_terms_in_sum (int): Number of terms used in the sum
-    """
-    t = len(y_train)
-    if t <= seasonality:
-        return 0.0, 0
-
-    y_current = y_train[seasonality:t]
-    y_lagged = y_train[: t - seasonality]
-    scaling_sum = np.sum(np.abs(y_current - y_lagged))
-    n_terms_in_sum = len(y_current)
-    return scaling_sum, n_terms_in_sum
-
-
-def vertical_scaling_factor_sq(
-    y_train: np.ndarray, seasonality: int
-) -> tuple[float, int]:
-    """
-    Calculate the vertical scaling factor using squared differences.
-
-    Computes the sum of squared differences between seasonal lags in the training data.
-    Formula: Sum_{i=m+1}^{t-1} (y_i - y_{i-m})^2 where m is seasonality.
-
-    Args:
-        y_train (np.ndarray): Historical training data.
-        seasonality (int): Seasonal period for lagged comparison.
-
-    Returns:
-        tuple[float, int]: A tuple containing:
-            - scaling_sum (float): Sum of squared seasonal differences
-            - n_terms_in_sum (int): Number of terms used in the sum
-    """
-    t_prime = len(y_train) - 1
-    if t_prime <= seasonality:
-        return 0.0, 0
-
-    y_current = y_train[seasonality:t_prime]
-    y_lagged = y_train[: t_prime - seasonality]
-    scaling_sum = np.sum(np.square(y_current - y_lagged))
-    n_terms_in_sum = len(y_current)
-    return scaling_sum, n_terms_in_sum
-
-
-def horizontal_scaling_factor_sq(
-    y_train: np.ndarray, seasonality: int
-) -> tuple[float, int]:
-    """
-    Calculate the horizontal scaling factor using squared differences.
-
-    Computes the sum of squared differences between seasonal lags in the training data.
-    Formula: Sum_{i=m+1}^{t} (y_i - y_{i-m})^2 where m is seasonality.
-
-    Args:
-        y_train (np.ndarray): Historical training data.
-        seasonality (int): Seasonal period for lagged comparison.
-
-    Returns:
-        tuple[float, int]: A tuple containing:
-            - scaling_sum (float): Sum of squared seasonal differences
-            - n_terms_in_sum (int): Number of terms used in the sum
-    """
-    t = len(y_train)
-    if t <= seasonality:
-        return 0.0, 0
-
-    y_current = y_train[seasonality:t]
-    y_lagged = y_train[: t - seasonality]
-    scaling_sum = np.sum(np.square(y_current - y_lagged))
-    n_terms_in_sum = len(y_current)
-    return scaling_sum, n_terms_in_sum
-
-
 def mascv(
     y_train: np.ndarray, y_hat: np.ndarray, y_hat_minus_1: np.ndarray, seasonality: int
 ) -> float:
@@ -233,8 +116,34 @@ def mascv(
     if n_overlap <= 0:
         return np.nan
 
+    def scaling_factor(y_train: np.ndarray, seasonality: int) -> tuple[float, int]:
+        """
+        Calculate the vertical scaling factor using absolute differences.
+
+        Computes the sum of absolute differences between seasonal lags in the training data.
+
+        Args:
+            y_train (np.ndarray): Historical training data.
+            seasonality (int): Seasonal period for lagged comparison.
+
+        Returns:
+            tuple[float, int]: A tuple containing:
+                - scaling_sum (float): Sum of absolute seasonal differences
+                - n_terms_in_sum (int): Number of terms used in the sum
+        """
+
+        t_prime = len(y_train) - 1
+        if t_prime <= seasonality:
+            return 0.0, 0
+
+        y_current = y_train[seasonality:t_prime]
+        y_lagged = y_train[: t_prime - seasonality]
+        scaling_sum = np.sum(np.abs(y_current - y_lagged))
+        n_terms_in_sum = len(y_current)
+        return scaling_sum, n_terms_in_sum
+
     numerator = np.sum(np.abs(y_hat[:n_overlap] - y_hat_minus_1[1:h]))
-    scaling_sum, n_scale_terms = vertical_scaling_factor_abs(y_train, seasonality)
+    scaling_sum, n_scale_terms = scaling_factor(y_train, seasonality)
 
     if n_scale_terms == 0:
         return np.inf
@@ -282,8 +191,33 @@ def masch(y_train: np.ndarray, y_hat: np.ndarray, seasonality: int) -> float:
     if n_differences <= 0:
         return np.nan
 
+    def scaling_factor(y_train: np.ndarray, seasonality: int) -> tuple[float, int]:
+        """
+        Calculate the horizontal scaling factor using absolute differences.
+
+        Computes the sum of absolute differences between seasonal lags in the training data.
+
+        Args:
+            y_train (np.ndarray): Historical training data.
+            seasonality (int): Seasonal period for lagged comparison.
+
+        Returns:
+            tuple[float, int]: A tuple containing:
+                - scaling_sum (float): Sum of absolute seasonal differences
+                - n_terms_in_sum (int): Number of terms used in the sum
+        """
+        t = len(y_train)
+        if t <= seasonality:
+            return 0.0, 0
+
+        y_current = y_train[seasonality:t]
+        y_lagged = y_train[: t - seasonality]
+        scaling_sum = np.sum(np.abs(y_current - y_lagged))
+        n_terms_in_sum = len(y_current)
+        return scaling_sum, n_terms_in_sum
+
     numerator = np.sum(np.abs(y_hat[1:] - y_hat[:-1]))
-    scaling_sum, n_scale_terms = horizontal_scaling_factor_abs(y_train, seasonality)
+    scaling_sum, n_scale_terms = scaling_factor(y_train, seasonality)
 
     if n_scale_terms == 0:
         return np.inf
@@ -336,8 +270,33 @@ def rmsscv(
     if n_overlap <= 0:
         return np.nan
 
+    def scaling_factor(y_train: np.ndarray, seasonality: int) -> tuple[float, int]:
+        """
+        Calculate the vertical scaling factor using squared differences.
+
+        Computes the sum of squared differences between seasonal lags in the training data.
+
+        Args:
+            y_train (np.ndarray): Historical training data.
+            seasonality (int): Seasonal period for lagged comparison.
+
+        Returns:
+            tuple[float, int]: A tuple containing:
+                - scaling_sum (float): Sum of squared seasonal differences
+                - n_terms_in_sum (int): Number of terms used in the sum
+        """
+        t_prime = len(y_train) - 1
+        if t_prime <= seasonality:
+            return 0.0, 0
+
+        y_current = y_train[seasonality:t_prime]
+        y_lagged = y_train[: t_prime - seasonality]
+        scaling_sum = np.sum(np.square(y_current - y_lagged))
+        n_terms_in_sum = len(y_current)
+        return scaling_sum, n_terms_in_sum
+
     diff_squared_sum_num = np.sum(np.square(y_hat[:n_overlap] - y_hat_minus_1[1:h]))
-    scaling_sum, n_scale_terms = vertical_scaling_factor_sq(y_train, seasonality)
+    scaling_sum, n_scale_terms = scaling_factor(y_train, seasonality)
 
     if n_scale_terms == 0:
         return np.inf
@@ -387,7 +346,32 @@ def rmssch(y_train: np.ndarray, y_hat: np.ndarray, seasonality: int) -> float:
 
     diff_squared_sum_num = np.sum(np.square(y_hat[1:] - y_hat[:-1]))
 
-    scaling_sum, n_scale_terms = horizontal_scaling_factor_sq(y_train, seasonality)
+    def scaling_factor(y_train: np.ndarray, seasonality: int) -> tuple[float, int]:
+        """
+        Calculate the horizontal scaling factor using squared differences.
+
+        Computes the sum of squared differences between seasonal lags in the training data.
+
+        Args:
+            y_train (np.ndarray): Historical training data.
+            seasonality (int): Seasonal period for lagged comparison.
+
+        Returns:
+            tuple[float, int]: A tuple containing:
+                - scaling_sum (float): Sum of squared seasonal differences
+                - n_terms_in_sum (int): Number of terms used in the sum
+        """
+        t = len(y_train)
+        if t <= seasonality:
+            return 0.0, 0
+
+        y_current = y_train[seasonality:t]
+        y_lagged = y_train[: t - seasonality]
+        scaling_sum = np.sum(np.square(y_current - y_lagged))
+        n_terms_in_sum = len(y_current)
+        return scaling_sum, n_terms_in_sum
+
+    scaling_sum, n_scale_terms = scaling_factor(y_train, seasonality)
 
     if n_scale_terms == 0:
         return np.inf
