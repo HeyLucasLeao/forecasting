@@ -23,6 +23,11 @@ def macv(
     Raises:
         ValueError: If arrays are not 1-dimensional, do not have the same shape,
                     or if the current forecast mean is zero during normalization.
+    References
+    ----------
+    - Genov, E., Ruddick, J., Bergmeir, C., Vafaeipour, M., Coosemans, T., Garcia, S.,
+      & Messagie, M. (2024). Predict. Optimize. Revise. On Forecast and Policy Stability
+      in Energy Management Systems. arXiv preprint arXiv:2407.03368.
     """
 
     y_hat = np.asarray(y_hat)
@@ -48,18 +53,24 @@ def mach(
     """
     Calculates the Mean Absolute Change Horizontal (MAC_H).
 
-    MAC_H quantifies the average magnitude of change between adjacent time steps
-    within a single forecast window (measures the 'smoothness' of the forecast curve).
+    This function quantifies the average magnitude of change between adjacent time steps
+    within a single forecast window, measuring the 'smoothness' of the forecast curve.
     A lower value indicates higher horizontal stability.
 
     Args:
         y_hat (np.ndarray or list): The single forecast window (e.g., T+1 to T+H).
 
     Returns:
-        float: The calculated MAC_H (absolute deviation) or the percentage deviation (if normalize=True).
+        float: The calculated MAC_H (absolute deviation).
 
     Raises:
         ValueError: If the array is not 1-dimensional or has fewer than two elements.
+
+    References
+    ----------
+    - Genov, E., Ruddick, J., Bergmeir, C., Vafaeipour, M., Coosemans, T., Garcia, S.,
+      & Messagie, M. (2024). Predict. Optimize. Revise. On Forecast and Policy Stability
+      in Energy Management Systems. arXiv preprint arXiv:2407.03368.
     """
 
     y_hat = np.asarray(y_hat)
@@ -98,6 +109,12 @@ def mascv(
 
     Raises:
         ValueError: If seasonality is <= 0.
+
+    References
+    ----------
+    - Godahewa, R., Bergmeir, C., Erkin Baz, Z., Zhu, C., Song, Z., García, S.,
+      & Benavides, D. (2023). On forecast stability. International Journal of
+      Forecasting, 41(4), 1539-1558.
     """
     y_train = np.asarray(y_train)
     y_hat = np.asarray(y_hat)
@@ -173,13 +190,17 @@ def masch(y_train: np.ndarray, y_hat: np.ndarray, seasonality: int) -> float:
 
     Raises:
         ValueError: If seasonality is <= 0.
+
+    References
+    ----------
+    - Godahewa, R., Bergmeir, C., Erkin Baz, Z., Zhu, C., Song, Z., García, S.,
+      & Benavides, D. (2023). On forecast stability. International Journal of
+      Forecasting, 41(4), 1539-1558.
     """
 
     y_train = np.asarray(y_train)
     y_hat = np.asarray(y_hat)
 
-    if y_hat.shape != y_train.shape:
-        raise ValueError("y_hat and y_train must have the same length.")
     if y_train.ndim != 1 or y_hat.ndim != 1:
         raise ValueError("All inputs must be 1D arrays (vectors).")
     if seasonality <= 0:
@@ -251,6 +272,12 @@ def rmsscv(
 
     Raises:
         ValueError: If seasonality is <= 0.
+
+    References
+    ----------
+    - Godahewa, R., Bergmeir, C., Erkin Baz, Z., Zhu, C., Song, Z., García, S.,
+      & Benavides, D. (2023). On forecast stability. International Journal of
+      Forecasting, 41(4), 1539-1558.
     """
 
     y_train = np.asarray(y_train)
@@ -326,13 +353,17 @@ def rmssch(y_train: np.ndarray, y_hat: np.ndarray, seasonality: int) -> float:
 
     Raises:
         ValueError: If seasonality is <= 0.
+
+    References
+    ----------
+    - Godahewa, R., Bergmeir, C., Erkin Baz, Z., Zhu, C., Song, Z., García, S.,
+      & Benavides, D. (2023). On forecast stability. International Journal of
+      Forecasting, 41(4), 1539-1558.
     """
 
     y_train = np.asarray(y_train)
     y_hat = np.asarray(y_hat)
 
-    if y_hat.shape != y_train.shape:
-        raise ValueError("y_hat and y_train must have the same length.")
     if y_train.ndim != 1 or y_hat.ndim != 1:
         raise ValueError("All inputs must be 1D arrays (vectors).")
     if seasonality <= 0:
